@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: Agent platform integration contract
+  version: 0.1.0
+  description: |
+    Two-way contract between the sweepstakes backend ("platform") and the agent platform ("agents").
+    DRAFT. Nothing here is implemented yet. Money amounts are USD decimals with 2 places.
+
+    Security (both directions): every request carries
+    `X-Operator-Id`, `X-Api-Key`, `X-Timestamp` (unix seconds, max 5 min skew) and
+    `X-Signature` = hex HMAC-SHA256(secret, `${timestamp}.${rawBody}`). Secrets are per operator.
+    Every money-moving call needs `Idempotency-Key`; a repeat with the same key and body returns the first result.
+servers:
+  - url: https://{platformHost}/api/agent-api/v1
+    description: Platform (called BY the agent platform)
+    variables:
+      platformHost: { default: api.example.com }
+  - url: https://{agentsHost}/v1
+    description: Agent platform (called BY the platform)
+    variables:
+      agentsHost: { default: agents.example.com }
+paths:
+  /players:
+    get:
+      tags: [platform]
+      summary: List players linked to an agent (platform side)
+      parameters:
+        - { name: agentId, in: query, required: true, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: perPage, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200':
+          description: Players with wallet balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows: { type: array, items: { $ref: '#/components/schemas/Player' } }
+                  total: { type: integer }
+  /players/{playerId}/credit:
+    post:
+      tags: [platform]
+      summary: Credit a player wallet (CASH bucket, no wagering lock)
+      parameters:
+        - { $ref: '#/components/parameters/PlayerId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/MoneyMove' }
+      responses:
+        '200': { $ref: '#/components/responses/WalletResult' }
+        '409': { description: Idempotency key reused with a different body }
+        '422': { description: Player is not linked to this agent, frozen, or amount invalid }
+  /players/{playerId}/withdraw:
+    post:
+      tags: [platform]
+      summary: Debit a player wallet (cannot exceed balance)
+      parameters:
+        - { $ref: '#/components/parameters/PlayerId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/MoneyMove' }
+      responses:
+        '200': { $ref: '#/components/responses/WalletResult' }
+        '409': { description: Idempotency key reused with a different body }
+        '422': { description: Insufficient balance, not linked, or frozen }
+  /players/{playerId}/freeze:
+    post:
+      tags: [platform]
+      summary: Freeze (no login, no bets) or unfreeze a linked player
+      parameters:
+        - { $ref: '#/components/parameters/PlayerId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, frozen]
+              properties:
+                agentId: { type: string }
+                frozen: { type: boolean }
+                comment: { type: string }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Player' } } } }
+  /weeks/{weekId}/reset:
+    post:
+      tags: [platform]
+      summary: Reset agent-linked player wallets to 0 after the agent platform stored its snapshot
+      parameters:
+        - { name: weekId, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses:
+        '200':
+          description: Closing balances recorded before the reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  weekId: { type: string }
+                  players:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        playerId: { type: string }
+                        closingBalance: { type: number }
+  /events:
+    post:
+      tags: [agents]
+      summary: Activity pushed from the platform to the agent platform (batched, retried)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/ActivityEvent' }
+      responses:
+        '202': { description: Accepted. Duplicate eventIds are ignored. }
+  /weeks/{weekId}/closing:
+    post:
+      tags: [agents]
+      summary: Platform tells the agent platform that the operator's close time has been reached
+      parameters:
+        - { name: weekId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closeAt: { type: string, format: date-time }
+                timeZone: { type: string, example: Asia/Jerusalem }
+                pauseMinutes: { type: integer, minimum: 0, description: 0 means continue without pause }
+      responses:
+        '202': { description: Accepted }
+components:
+  parameters:
+    PlayerId: { name: playerId, in: path, required: true, schema: { type: string } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 80 } }
+  requestBodies:
+    MoneyMove:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [agentId, amount]
+            properties:
+              agentId: { type: string }
+              amount: { type: number, exclusiveMinimum: 0 }
+              comment: { type: string, maxLength: 500 }
+  responses:
+    WalletResult:
+      description: Wallet after the move
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              playerId: { type: string }
+              transactionId: { type: string }
+              balance: { type: number }
+  schemas:
+    Player:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        agentId: { type: string }
+        frozen: { type: boolean }
+        balance: { type: number }
+    ActivityEvent:
+      type: object
+      required: [eventId, type, playerId, agentId, occurredAt]
+      properties:
+        eventId: { type: string, description: Stable id, used to dedupe }
+        type: { type: string, enum: [player_linked, bet, win, refund, adjustment] }
+        playerId: { type: string }
+        agentId: { type: string }
+        amount: { type: number }
+        roundId: { type: string }
+        occurredAt: { type: string, format: date-time, description: Decides which week it counts in }
