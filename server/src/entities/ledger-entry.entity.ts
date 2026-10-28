@@ -36,6 +36,10 @@ export class LedgerEntry extends Base {
   @Column({ type: 'numeric', precision: 18, scale: 2, nullable: true, transformer: numeric })
   balanceAfter?: number | null;
 
+  /** The player's wallet balance the platform reported after a completed player move. */
+  @Column({ type: 'numeric', precision: 18, scale: 2, nullable: true, transformer: numeric })
+  platformBalance?: number | null;
+
   @Column({ type: 'uuid', nullable: true })
   counterpartyAgentId?: string | null;
 
