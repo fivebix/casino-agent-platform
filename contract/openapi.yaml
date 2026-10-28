@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Agent platform integration contract
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Two-way contract between the sweepstakes backend ("platform") and the agent platform ("agents").
     DRAFT. Nothing here is implemented yet. Money amounts are USD decimals with 2 places.
@@ -10,6 +10,17 @@ info:
     `X-Operator-Id`, `X-Api-Key`, `X-Timestamp` (unix seconds, max 5 min skew) and
     `X-Signature` = hex HMAC-SHA256(secret, `${timestamp}.${rawBody}`). Secrets are per operator.
     Every money-moving call needs `Idempotency-Key`; a repeat with the same key and body returns the first result.
+
+    Status per operation is tagged in each description: `backend: built` means the sweepstakes backend
+    branch feat/agent-integration implements it; `backend: not built` means it is specified here only.
+    `agents: built` / `agents: not built` is the same for this repo's server.
+
+    Events: `bet`, `win` and `refund` drive Calc, risk and turnover. `adjustment` and `player_linked` are
+    informational only. Adjustments include the agent platform's own credits and the weekly-reset debits
+    coming back, so counting them would double-count money.
+
+    Known behaviour: the backend zeroes cash when `/weeks/{weekId}/reset` is called, not at `closeAt`. In
+    "continue" mode, play after the close time but before the reset is folded into the closing balance.
 servers:
   - url: https://{platformHost}/api/agent-api/v1
     description: Platform (called BY the agent platform)
@@ -23,7 +34,7 @@ paths:
   /players:
     get:
       tags: [platform]
-      summary: List players linked to an agent (platform side)
+      summary: "List players linked to an agent (backend: built)"
       parameters:
         - { name: agentId, in: query, required: true, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer, default: 1 } }
@@ -41,7 +52,7 @@ paths:
   /players/{playerId}/credit:
     post:
       tags: [platform]
-      summary: Credit a player wallet (CASH bucket, no wagering lock)
+      summary: "Credit a player wallet, CASH bucket, no wagering lock (backend: built)"
       parameters:
         - { $ref: '#/components/parameters/PlayerId' }
         - { $ref: '#/components/parameters/IdempotencyKey' }
@@ -53,7 +64,7 @@ paths:
   /players/{playerId}/withdraw:
     post:
       tags: [platform]
-      summary: Debit a player wallet (cannot exceed balance)
+      summary: "Debit a player wallet, cannot exceed balance (backend: built)"
       parameters:
         - { $ref: '#/components/parameters/PlayerId' }
         - { $ref: '#/components/parameters/IdempotencyKey' }
@@ -65,7 +76,7 @@ paths:
   /players/{playerId}/freeze:
     post:
       tags: [platform]
-      summary: Freeze (no login, no bets) or unfreeze a linked player
+      summary: "Freeze (no login, no bets) or unfreeze a linked player (backend: built)"
       parameters:
         - { $ref: '#/components/parameters/PlayerId' }
         - { $ref: '#/components/parameters/IdempotencyKey' }
@@ -81,11 +92,11 @@ paths:
                 frozen: { type: boolean }
                 comment: { type: string }
       responses:
-        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Player' } } } }
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/FreezeResult' } } } }
   /weeks/{weekId}/reset:
     post:
       tags: [platform]
-      summary: Reset agent-linked player wallets to 0 after the agent platform stored its snapshot
+      summary: "Reset agent-linked player wallets to 0 after the agent platform stored its snapshot (backend: built, uncommitted)"
       parameters:
         - { name: weekId, in: path, required: true, schema: { type: string } }
         - { $ref: '#/components/parameters/IdempotencyKey' }
@@ -108,7 +119,7 @@ paths:
   /events:
     post:
       tags: [agents]
-      summary: Activity pushed from the platform to the agent platform (batched, retried)
+      summary: "Activity pushed from the platform to the agent platform, batched and retried (agents: built)"
       requestBody:
         required: true
         content:
@@ -126,7 +137,7 @@ paths:
   /weeks/{weekId}/closing:
     post:
       tags: [agents]
-      summary: Platform tells the agent platform that the operator's close time has been reached
+      summary: "Platform tells the agent platform the operator's close time was reached; idempotent on weekId, answers 202 fast (agents: built)"
       parameters:
         - { name: weekId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -138,9 +149,99 @@ paths:
               properties:
                 closeAt: { type: string, format: date-time }
                 timeZone: { type: string, example: Asia/Jerusalem }
-                pauseMinutes: { type: integer, minimum: 0, description: 0 means continue without pause }
+                pauseMinutes: { type: integer, minimum: 0, description: '0 means continue without pause' }
       responses:
         '202': { description: Accepted }
+  /players/create:
+    post:
+      tags: [platform]
+      summary: "Create a player and link them to an agent (backend: not built)"
+      description: Needed for the panel's "Create New Player". The backend creates a normal player on the operator's site, links it, and the agent hands over the credentials.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, username, password]
+              properties:
+                agentId: { type: string }
+                username: { type: string }
+                name: { type: string }
+                password: { type: string, description: 'Temporary, the player may change it' }
+                language: { type: string }
+      responses:
+        '200': { description: Created and linked, content: { application/json: { schema: { $ref: '#/components/schemas/Player' } } } }
+        '409': { description: Username already exists for this operator }
+  /config:
+    get:
+      tags: [platform]
+      summary: "Operator settings the agent platform enforces (backend: not built)"
+      description: The agent platform enforces the credit limit and needs the time zone and pause settings; the backend owns them.
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditLimit: { type: number, nullable: true }
+                  timeZone: { type: string, example: Asia/Jerusalem }
+                  closeWeekday: { type: integer, example: 2 }
+                  closeHour: { type: integer, example: 11 }
+                  pauseEnabled: { type: boolean }
+                  pauseMinutes: { type: integer }
+  /tenants/{operatorId}/agents:
+    post:
+      tags: [agents]
+      summary: "Backoffice creates an agent (or the root agent) for an operator (agents: built)"
+      description: Called by the sweepstakes backend on behalf of the operator admin. Omit parentAgentId for a top-level agent under the operator admin.
+      parameters:
+        - { name: operatorId, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, tempPassword]
+              properties:
+                parentAgentId: { type: string }
+                username: { type: string }
+                name: { type: string }
+                tempPassword: { type: string }
+                canCreateAgents: { type: boolean, default: true }
+                creditLimit: { type: number }
+      responses:
+        '200': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Agent' } } } }
+  /tenants/{operatorId}/sso:
+    post:
+      tags: [agents]
+      summary: "Mint a single-use SSO link into an agent's panel (agents: not built)"
+      parameters:
+        - { name: operatorId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId]
+              properties:
+                agentId: { type: string }
+      responses:
+        '200':
+          description: One-time URL, valid 60 seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
 components:
   parameters:
     PlayerId: { name: playerId, in: path, required: true, schema: { type: string } }
@@ -166,8 +267,8 @@ components:
             type: object
             properties:
               playerId: { type: string }
-              transactionId: { type: string }
               balance: { type: number }
+              transactionId: { type: string, description: 'Optional, not returned by the backend today' }
   schemas:
     Player:
       type: object
@@ -177,14 +278,30 @@ components:
         agentId: { type: string }
         frozen: { type: boolean }
         balance: { type: number }
+    FreezeResult:
+      type: object
+      properties:
+        id: { type: string }
+        agentId: { type: string }
+        frozen: { type: boolean }
+        balance: { type: number }
+    Agent:
+      type: object
+      properties:
+        id: { type: string }
+        operatorId: { type: string }
+        parentAgentId: { type: string, nullable: true }
+        username: { type: string }
+        name: { type: string }
+        canCreateAgents: { type: boolean }
     ActivityEvent:
       type: object
       required: [eventId, type, playerId, agentId, occurredAt]
       properties:
-        eventId: { type: string, description: Stable id, used to dedupe }
-        type: { type: string, enum: [player_linked, bet, win, refund, adjustment] }
+        eventId: { type: string, description: 'Stable id, used to dedupe' }
+        type: { type: string, enum: [player_linked, bet, win, refund, adjustment], description: 'bet, win and refund drive the roll-ups; the rest are informational' }
         playerId: { type: string }
         agentId: { type: string }
         amount: { type: number }
         roundId: { type: string }
-        occurredAt: { type: string, format: date-time, description: Decides which week it counts in }
+        occurredAt: { type: string, format: date-time, description: 'Decides which week it counts in' }
