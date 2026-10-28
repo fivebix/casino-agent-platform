@@ -10,7 +10,8 @@ export type LedgerType =
   | 'withdraw_in'
   | 'withdraw_out'
   | 'player_credit'
-  | 'player_withdraw';
+  | 'player_withdraw'
+  | 'reversal';
 
 export type LedgerStatus = 'pending' | 'completed' | 'failed';
 
