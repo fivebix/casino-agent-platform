@@ -53,6 +53,45 @@ export class AgentsService {
     }
   }
 
+  /** Rename, toggle agent-creation rights, or block/unblock an agent. */
+  async updateAgent(
+    actor: Actor,
+    tenantId: string,
+    agentId: string,
+    patch: { name?: string | null; canCreateAgents?: boolean; status?: 'active' | 'blocked' },
+  ): Promise<Agent> {
+    const target = await this.inTenant(tenantId, agentId);
+    if (actor.kind === 'agent') {
+      this.assertActive(actor.agent);
+      // An agent may only manage someone strictly below them in their own subtree.
+      if (!isStrictDescendant(target.path, actor.agent.path)) throw new DomainError('FORBIDDEN');
+    }
+    if (patch.name !== undefined) target.name = patch.name;
+    if (patch.canCreateAgents !== undefined) target.canCreateAgents = patch.canCreateAgents;
+    if (patch.status !== undefined) target.status = patch.status;
+    return this.ds.getRepository(Agent).save(target);
+  }
+
+  /**
+   * Delete an agent. Refused if it still has descendants (would orphan a subtree) or a
+   * non-zero balance (withdraw the credit first). Ledger history is kept for audit.
+   */
+  async deleteAgent(actor: Actor, tenantId: string, agentId: string): Promise<{ id: string }> {
+    const repo = this.ds.getRepository(Agent);
+    const target = await this.inTenant(tenantId, agentId);
+    if (actor.kind === 'agent') {
+      this.assertActive(actor.agent);
+      if (!isStrictDescendant(target.path, actor.agent.path)) throw new DomainError('FORBIDDEN');
+    }
+
+    const descendants = await repo.count({ where: { tenantId, path: Like(`${target.path}_%`) } });
+    if (descendants > 0) throw new DomainError('HAS_DESCENDANTS');
+    if (Math.round(target.balance * 100) !== 0) throw new DomainError('NONZERO_BALANCE');
+
+    await repo.delete({ id: target.id, tenantId });
+    return { id: target.id };
+  }
+
   async setBlocked(actor: Actor, tenantId: string, agentId: string, blocked: boolean): Promise<Agent> {
     const target = await this.inTenant(tenantId, agentId);
     if (actor.kind === 'agent') {

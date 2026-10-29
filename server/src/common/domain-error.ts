@@ -8,7 +8,9 @@ export type DomainErrorCode =
   | 'IDEMPOTENCY_CONFLICT'
   | 'PLAYER_FROZEN'
   | 'PLATFORM_ERROR'
-  | 'COMMENT_REQUIRED';
+  | 'COMMENT_REQUIRED'
+  | 'HAS_DESCENDANTS'
+  | 'NONZERO_BALANCE';
 
 export class DomainError extends Error {
   constructor(public readonly code: DomainErrorCode, message?: string) {

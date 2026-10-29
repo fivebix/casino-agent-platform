@@ -1,0 +1,957 @@
+{
+  "info": {
+    "name": "Agent Platform API",
+    "_postman_id": "a1e7c0de-0001-4a00-9a00-agentplatform01",
+    "description": "Runnable collection for the agent-platform server (NestJS, default http://localhost:4100).\n\n## Authentication\nEvery endpoint except `GET /health` is signed. A **collection-level pre-request script** adds these headers automatically on each send:\n- `X-Operator-Id` — the operator id (collection variable `operatorId`)\n- `X-Api-Key` — the operator api key (`apiKey`)\n- `X-Timestamp` — unix seconds, must be within ±5 minutes of the server clock\n- `X-Signature` — `hex( HMAC-SHA256(signingSecret, \"<timestamp>.<rawBody>\") )`\n\nYou do **not** add the `x-*` headers yourself. Just set the four credential variables (below) and send.\n\n## Variables (Collection tab → Variables)\n| Variable | Default | Meaning |\n|---|---|---|\n| `baseUrl` | http://localhost:4100 | Server base URL |\n| `operatorId` | demo-operator | From `npm run seed` |\n| `apiKey` | demo-api-key | From `npm run seed` |\n| `signingSecret` | demo-signing-secret | From `npm run seed` (secret) |\n| `managerUsername` | mgr1 | Username for the created agent |\n| `createKey` / `creditKey` / `withdrawKey` | k-* | Idempotency-Key per money move |\n| `agentId` | (auto) | Set by the **Create agent** test from its response |\n| `weekId` | 2026-W44 | Weekly-close id |\n\n## Run order\n1. **Health** (open, no auth)\n2. **Agents → Create top-level agent** — captures `agentId` for the rest\n3. **Credit → Grant / Withdraw**\n4. **Events**, **Weeks → Closing**\n5. **Negative tests** — expected 401 / 400 / 422\n\nUse the Collection Runner to run them all in sequence.\n\n## Idempotency\nMoney moves require an `Idempotency-Key` header. Re-sending the same key with the same body **replays the first result** (no double credit, same agent) — that is by design. Change the key variable to perform a genuinely new move.\n\n## Prerequisites\nStart the server (`npm start` in `server/`); you should see `Database connected: ...`. Player money moves additionally require `sweepstakes-backend` running at the tenant's `platformUrl`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Signs every request with the agent-platform HMAC scheme.",
+          "// Runs before any folder/request script, so negative tests can override it.",
+          "const operatorId = pm.collectionVariables.get('operatorId');",
+          "const apiKey = pm.collectionVariables.get('apiKey');",
+          "const secret = pm.collectionVariables.get('signingSecret');",
+          "",
+          "// Sign the EXACT bytes that will be sent (resolve {{vars}} first).",
+          "let rawBody = '';",
+          "if (pm.request.body && pm.request.body.mode === 'raw' && pm.request.body.raw) {",
+          "  rawBody = pm.variables.replaceIn(pm.request.body.raw.toString());",
+          "}",
+          "",
+          "const ts = Math.floor(Date.now() / 1000).toString();",
+          "const signature = CryptoJS.HmacSHA256(ts + '.' + rawBody, secret).toString(CryptoJS.enc.Hex);",
+          "",
+          "pm.request.headers.upsert({ key: 'x-operator-id', value: operatorId });",
+          "pm.request.headers.upsert({ key: 'x-api-key', value: apiKey });",
+          "pm.request.headers.upsert({ key: 'x-timestamp', value: ts });",
+          "pm.request.headers.upsert({ key: 'x-signature', value: signature });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4100",
+      "type": "default"
+    },
+    {
+      "key": "operatorId",
+      "value": "demo-operator",
+      "type": "default"
+    },
+    {
+      "key": "apiKey",
+      "value": "demo-api-key",
+      "type": "secret"
+    },
+    {
+      "key": "signingSecret",
+      "value": "demo-signing-secret",
+      "type": "secret"
+    },
+    {
+      "key": "managerUsername",
+      "value": "mgr1",
+      "type": "default"
+    },
+    {
+      "key": "createKey",
+      "value": "k-mgr1",
+      "type": "default"
+    },
+    {
+      "key": "creditKey",
+      "value": "k-credit1",
+      "type": "default"
+    },
+    {
+      "key": "withdrawKey",
+      "value": "k-wd1",
+      "type": "default"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "weekId",
+      "value": "2026-W44",
+      "type": "default"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Liveness + database check. **Open endpoint** — no signature required.\n\n**200** `{ \"status\": \"ok\", \"db\": \"up\" }` when the DB is reachable."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('db is up', () => pm.expect(pm.response.json().db).to.eql('up'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\",\n  \"db\": \"up\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "Agents",
+      "description": "Create and manage agent nodes. Called by the sweepstakes backend on the operator admin's behalf.",
+      "item": [
+        {
+          "name": "Create top-level agent (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{createKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{managerUsername}}\",\n  \"name\": \"Manager One\",\n  \"tempPassword\": \"Temp123!\",\n  \"creditLimit\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents"
+              ]
+            },
+            "description": "Creates an agent under the operator. **Omit** `parentAgentId` for a top-level agent (child of the operator admin); include it to create deeper in the tree.\n\n**Body**\n- `username` (required) — unique per operator\n- `tempPassword` (required) — forced change on first login\n- `name`, `canCreateAgents` (default true)\n- `creditLimit` — only honored for a top-level agent; sets the operator-wide limit\n\n**Headers**: `Idempotency-Key` (required). Re-sending the same key returns the same agent.\n\n**201** returns `{ id, operatorId, parentAgentId, username, name, canCreateAgents }`. The test saves `id` into `{{agentId}}`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('has id', () => pm.expect(json.id).to.be.a('string'));",
+                  "pm.collectionVariables.set('agentId', json.id);",
+                  "console.log('agentId =', json.id);"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "k-mgr1"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"mgr1\",\n  \"name\": \"Manager One\",\n  \"tempPassword\": \"Temp123!\",\n  \"creditLimit\": 1000\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tenants",
+                    "{{operatorId}}",
+                    "agents"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"50ea5899-9ef2-4edc-a1fe-dadbeacde1f1\",\n  \"operatorId\": \"demo-operator\",\n  \"parentAgentId\": null,\n  \"username\": \"mgr1\",\n  \"name\": \"Manager One\",\n  \"canCreateAgents\": true\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Create sub-agent (under {{agentId}})",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "k-sub1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentAgentId\": \"{{agentId}}\",\n  \"username\": \"sub1\",\n  \"name\": \"Super Agent\",\n  \"tempPassword\": \"Temp123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents"
+              ]
+            },
+            "description": "Creates an agent **below** an existing one by passing `parentAgentId`. Uses the `{{agentId}}` captured by the Create top-level agent request. Nesting is unlimited."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('parent is the manager', () => pm.expect(pm.response.json().parentAgentId).to.eql(pm.collectionVariables.get('agentId')));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List agents (tree)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents"
+              ]
+            },
+            "description": "Returns the whole agent tree for the operator, parents before children, each with its live `balance`, `status`, `path` and derived `level` (1=Manager, 2=Super Agent, 3=Agent, 4+=Sub-agent). This is the read model the console table renders.\n\n**200** → `AgentListItem[]`. Signed like every call; no body, so the signature is over an empty body."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const arr = pm.response.json();",
+                  "pm.test('is an array', () => pm.expect(arr).to.be.an('array'));",
+                  "console.log('agents in tree =', arr.length);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update agent (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Renamed Manager\",\n  \"canCreateAgents\": true,\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}"
+              ]
+            },
+            "description": "Partially updates an agent. All fields optional:\n- `name` — display name\n- `canCreateAgents` — allow/deny creating sub-agents\n- `status` — `active` or `blocked`\n\nUses `{{agentId}}` captured by **Create top-level agent**. **200** returns the updated `AgentListItem`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('name updated', () => pm.expect(pm.response.json().name).to.eql('Renamed Manager'));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete agent (DELETE)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}"
+              ]
+            },
+            "description": "Deletes an agent. Refused when it would orphan a subtree or lose credit:\n- **409 HAS_DESCENDANTS** — the agent still has sub-agents\n- **422 NONZERO_BALANCE** — withdraw its credit first\n\nLedger history is retained. Targets `{{agentId}}`; the test accepts 200 (deleted) or 409 (has sub-agents) so a full-folder run stays green."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 deleted or 409 has sub-agents', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.test('deleted flag', () => pm.expect(pm.response.json().deleted).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Credit",
+      "description": "Internal credit ledger between the operator and agents (not player wallets).",
+      "item": [
+        {
+          "name": "Grant credit to agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{creditKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500,\n  \"comment\": \"weekly float\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}/credit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}",
+                "credit"
+              ]
+            },
+            "description": "The operator grants credit to a top-level agent (or an agent grants to a direct child). Capped by the operator credit limit / giver balance.\n\n**Body**: `amount` (> 0, max 2 decimals), optional `comment`.\n**Header**: `Idempotency-Key` (required; same key replays).\n\n**201** `{ agentId, balance }`.\n**422** `TENANT_LIMIT_EXCEEDED` / `INSUFFICIENT_CREDIT`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('returns a balance', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "k-credit1"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 500,\n  \"comment\": \"weekly float\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}/credit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tenants",
+                    "{{operatorId}}",
+                    "agents",
+                    "{{agentId}}",
+                    "credit"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"agentId\": \"50ea5899-9ef2-4edc-a1fe-dadbeacde1f1\",\n  \"balance\": 500\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Withdraw credit from agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{withdrawKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}",
+                "withdraw"
+              ]
+            },
+            "description": "Takes credit back from a direct child, up to what the child holds.\n\n**201** `{ agentId, balance }`.\n**422** `NOTHING_TO_WITHDRAW` if the amount exceeds the balance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('returns a balance', () => pm.expect(pm.response.json().balance).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "Push activity events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    {\n      \"eventId\": \"e1\",\n      \"type\": \"bet\",\n      \"playerId\": \"p1\",\n      \"agentId\": \"{{agentId}}\",\n      \"amount\": 10,\n      \"occurredAt\": \"2026-10-29T10:00:00Z\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "events"
+              ]
+            },
+            "description": "Activity pushed from the platform (`bet`, `win`, `refund`, `adjustment`, `player_linked`). Up to 100 events per call. **Duplicate `eventId`s are ignored** (dedup on operator + eventId). No Idempotency-Key needed.\n\n**202** `{ \"accepted\": <n> }`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "pm.test('accepted count', () => pm.expect(pm.response.json().accepted).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "202 Accepted",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"events\": [ { \"eventId\": \"e1\", \"type\": \"bet\", \"playerId\": \"p1\", \"agentId\": \"{{agentId}}\", \"amount\": 10, \"occurredAt\": \"2026-10-29T10:00:00Z\" } ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/events",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "events"
+                  ]
+                }
+              },
+              "status": "Accepted",
+              "code": 202,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"accepted\": 1\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Weeks",
+      "item": [
+        {
+          "name": "Weekly close notice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"closeAt\": \"2026-10-29T11:00:00Z\",\n  \"timeZone\": \"Asia/Jerusalem\",\n  \"pauseMinutes\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/weeks/{{weekId}}/closing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "weeks",
+                "{{weekId}}",
+                "closing"
+              ]
+            },
+            "description": "The platform tells the agent platform that an operator's weekly close time was reached. **Idempotent on `weekId`** (re-sending is ignored).\n\n**Body**: `closeAt` (ISO 8601), `timeZone` (IANA), `pauseMinutes` (0 = continue without pause).\n\n**202** `{ weekId, status: \"accepted\" }`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "pm.test('echoes weekId', () => pm.expect(pm.response.json().weekId).to.eql(pm.collectionVariables.get('weekId')));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Negative tests",
+      "description": "Each request forces a specific failure to show the error contract.",
+      "item": [
+        {
+          "name": "Missing signature headers (401)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Strip the headers the collection script added, to reproduce a 401.",
+                  "['x-operator-id','x-api-key','x-timestamp','x-signature'].forEach(h => pm.request.headers.remove(h));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('message', () => pm.expect(pm.response.json().message).to.include('Missing signature headers'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "events"
+              ]
+            },
+            "description": "Removes the signature headers → the exact 401 you saw: `Missing signature headers`."
+          },
+          "response": []
+        },
+        {
+          "name": "Bad signature (401)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Overwrite the valid signature with garbage.",
+                  "pm.request.headers.upsert({ key: 'x-signature', value: 'deadbeef' });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "events"
+              ]
+            },
+            "description": "Valid headers but a wrong `X-Signature` → 401 `Bad signature`."
+          },
+          "response": []
+        },
+        {
+          "name": "Negative amount (400 validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('validation message', () => pm.expect(JSON.stringify(pm.response.json())).to.include('positive'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "k-neg"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}/credit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}",
+                "credit"
+              ]
+            },
+            "description": "`amount` must be positive → 400 from the validation pipe."
+          },
+          "response": []
+        },
+        {
+          "name": "Over-withdraw (422 NOTHING_TO_WITHDRAW)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('error code', () => pm.expect(pm.response.json().error).to.eql('NOTHING_TO_WITHDRAW'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "k-over"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 99999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/{{agentId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "{{agentId}}",
+                "withdraw"
+              ]
+            },
+            "description": "Withdrawing more than the agent holds → 422 `NOTHING_TO_WITHDRAW`."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete missing agent -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tenants/{{operatorId}}/agents/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tenants",
+                "{{operatorId}}",
+                "agents",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "Deleting an id that is not in this tenant returns **404 NOT_FOUND**."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('NOT_FOUND code', () => pm.expect(pm.response.json().error).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

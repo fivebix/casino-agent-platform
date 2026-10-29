@@ -1,6 +1,9 @@
 import 'reflect-metadata';
+import { config as loadEnv } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { ENTITIES } from '../entities';
+
+loadEnv();
 
 export default new DataSource({
   type: 'postgres',
@@ -9,6 +12,7 @@ export default new DataSource({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities: ENTITIES,
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   uuidExtension: 'pgcrypto',
