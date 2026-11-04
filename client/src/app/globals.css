@@ -1,0 +1,144 @@
+@import 'tailwindcss';
+@plugin 'tailwindcss-animate';
+
+/*
+ * odryn agent panel — dark only. Colours read off the Figma exports.
+ * Semantic variables live on :root; @theme inline maps them to Tailwind utilities
+ * (bg-background, bg-panel, text-muted, bg-lime, border-border, …).
+ */
+:root {
+  color-scheme: dark;
+
+  /* Canvas & surfaces */
+  --background: #0c0c0e;
+  --topbar: #151517;
+  --topbar-user: #1e1e21;
+  --panel: #19191c;
+  --panel-2: #1f1f23;
+  --row: #222226;
+  --row-hover: #26262b;
+  --field: #2a2a2f;
+  --popover: #1c1c20;
+  --border: #2e2e33;
+  --border-strong: #3c3c42;
+  --rule: #e9e9ea;
+
+  /* Text */
+  --foreground: #f2f2f3;
+  --muted: #a1a1aa;
+  --faint: #6b6b73;
+
+  /* Brand */
+  --lime: #c8ff00;
+  --lime-hover: #b6e800;
+  --lime-dim: #4f6400;
+  --lime-ink: #0c0c0e;
+  --lime-track: #3c4a10;
+
+  /* Buttons */
+  --grey: #5d5e64;
+  --grey-hover: #6d6e74;
+  --grey-dark: #3a3a3f;
+  --danger: #e04f4c;
+  --danger-hover: #ec5f5c;
+
+  /* Status / roles */
+  --success: #4ade80;
+  --warning: #f2a33a;
+  --negative: #ff5a5a;
+  --telegram: #2aabee;
+  --whatsapp: #25d366;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-topbar: var(--topbar);
+  --color-topbar-user: var(--topbar-user);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-row: var(--row);
+  --color-row-hover: var(--row-hover);
+  --color-field: var(--field);
+  --color-popover: var(--popover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-rule: var(--rule);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-lime: var(--lime);
+  --color-lime-hover: var(--lime-hover);
+  --color-lime-dim: var(--lime-dim);
+  --color-lime-ink: var(--lime-ink);
+  --color-lime-track: var(--lime-track);
+  --color-grey: var(--grey);
+  --color-grey-hover: var(--grey-hover);
+  --color-grey-dark: var(--grey-dark);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-negative: var(--negative);
+  --color-telegram: var(--telegram);
+  --color-whatsapp: var(--whatsapp);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    /* The faint lime / red glow behind every screen. */
+    background-image:
+      radial-gradient(ellipse 55% 45% at 32% 28%, rgb(200 255 0 / 0.05), transparent 70%),
+      radial-gradient(ellipse 35% 35% at 80% 26%, rgb(224 79 76 / 0.06), transparent 70%);
+    background-attachment: fixed;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
