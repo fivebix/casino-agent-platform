@@ -1,10 +1,10 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import type { ReactNode } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import InfoTip from '@/components/common/InfoTip';
 import { AmountCell, UserCell } from '@/components/tables/cellRenderers';
 import { formatAmount } from '@/lib/format';
-import { cn } from '@/lib/utils';
 import type { Totals } from '@/types/agent';
 import UserStatusSwitch from './UserStatusSwitch';
 import type { UserTreeRow, UsersView } from './type';
@@ -45,12 +45,43 @@ const ClickableAmount = ({
   </button>
 );
 
+/** Header label with an "i" whose tooltip explains the column. */
+const HeaderInfo = ({ label, info }: { label: ReactNode; info: string }) => (
+  <span className="inline-flex items-center justify-center gap-1">
+    <span>{label}</span>
+    <InfoTip text={info} placement="bottom" />
+  </span>
+);
+
+const INFO = {
+  publicId: 'The user’s short ID number.',
+  user: 'Username and name. Click a user to open their profile, settings, limits and shares.',
+  status:
+    'Active or inactive. Switching an agent off blocks it and everyone below it; switching a player off stops them logging in to the casino.',
+  creditBalance:
+    'Player: the wallet balance right now. Agent: the credit left in its pool to give out. Click to set, add or take back credit.',
+  calc: 'This week’s result plus corrections. Negative means the user owes; positive means they are owed. Click to see or add corrections.',
+  backupCredit:
+    'Extra credit set aside for an agent from your own pool, used once its own pool runs out.',
+  riskMoney: 'Money in bets that are still open this week.',
+  openBets: 'Number of bets this week that are not settled yet.',
+  closedBets: 'Number of bets settled this week.',
+  turnover: 'Total amount staked this week.',
+  total: 'The full settled result of the week, before any discount or share split.',
+  bonus: 'Loss discount given this week.',
+  nette: 'Total minus the loss discount: the amount that is split by shares.',
+  sharePct: 'This user’s share percentage.',
+  companyShare:
+    'The part of Nette that goes above this user: to the agents above and the operator.',
+  agentShare: 'The part of Nette this user keeps, by its share %.',
+} as const;
+
 type FigureKey = Exclude<keyof Totals, 'creditBalance' | 'calc' | 'backupCredit'>;
 
 const figure = (key: FigureKey, header: string, totals?: Totals): ColumnDef<UserTreeRow> => ({
   id: key,
   accessorKey: key,
-  header,
+  header: () => <HeaderInfo label={header} info={INFO[key]} />,
   cell: ({ row }) => <AmountCell value={row.original[key]} />,
   footer: () => <AmountCell value={totals?.[key]} bold />,
 });
@@ -67,14 +98,14 @@ export const buildUserColumns = ({
 }: Options): ColumnDef<UserTreeRow>[] => [
   {
     id: 'publicId',
-    header: 'User ID',
+    header: () => <HeaderInfo label="User ID" info={INFO.publicId} />,
     cell: ({ row }) => <span className="tabular-nums">{row.original.publicId}</span>,
     footer: 'TOTAL',
     meta: { footerColSpan: 3 },
   },
   {
     id: 'user',
-    header: 'User',
+    header: () => <HeaderInfo label="User" info={INFO.user} />,
     cell: ({ row }) => (
       <UserCell
         role={row.original.role}
@@ -90,20 +121,23 @@ export const buildUserColumns = ({
   {
     id: 'status',
     header: () => (
-      <>
-        User
-        <br />
-        Status
-      </>
+      <HeaderInfo
+        label={
+          <>
+            User
+            <br />
+            Status
+          </>
+        }
+        info={INFO.status}
+      />
     ),
-    cell: ({ row }) => (
-      <UserStatusSwitch row={row.original} disabled={row.original.id === meId} />
-    ),
+    cell: ({ row }) => <UserStatusSwitch row={row.original} disabled={row.original.id === meId} />,
     meta: { footerColSpan: 0 },
   },
   {
     id: 'creditBalance',
-    header: 'Credit Balance',
+    header: () => <HeaderInfo label="Credit Balance" info={INFO.creditBalance} />,
     cell: ({ row }) =>
       row.original.id !== meId && (isAdminAgent || row.original.parentId === meId) ? (
         <ClickableAmount
@@ -118,7 +152,7 @@ export const buildUserColumns = ({
   },
   {
     id: 'calc',
-    header: 'Calc',
+    header: () => <HeaderInfo label="Calc" info={INFO.calc} />,
     cell: ({ row }) =>
       row.original.id === meId ? (
         <AmountCell value={row.original.calc} />
@@ -133,7 +167,7 @@ export const buildUserColumns = ({
   },
   {
     id: 'backupCredit',
-    header: 'Backup Credit',
+    header: () => <HeaderInfo label="Backup Credit" info={INFO.backupCredit} />,
     cell: ({ row }) =>
       row.original.kind === 'agent' && row.original.parentId === meId ? (
         <ClickableAmount
@@ -155,26 +189,9 @@ export const buildUserColumns = ({
   figure('nette', 'Nette', totals),
   {
     id: 'sharePct',
-    header: '%',
+    header: () => <HeaderInfo label="%" info={INFO.sharePct} />,
     cell: ({ row }) => <span className="tabular-nums">{formatAmount(row.original.sharePct)}</span>,
   },
   figure('companyShare', 'Company Share', totals),
   figure('agentShare', 'Agent Share', totals),
-  {
-    id: 'login',
-    header: 'Login',
-    // Login-as-user is not in the backend yet.
-    cell: ({ row }) => (
-      <span title="Coming soon" className="inline-flex">
-        <button
-          type="button"
-          disabled
-          aria-label={`Log in as ${row.original.username} (coming soon)`}
-          className={cn('cursor-not-allowed text-faint')}
-        >
-          <Icon icon="lucide:log-in" className="h-4 w-4" />
-        </button>
-      </span>
-    ),
-  },
 ];

@@ -58,10 +58,7 @@ const UsersList = () => {
             disabled={isFetching && !data}
             onChange={(next) => update({ week: next })}
           />
-          <ProductTabs
-            value={product}
-            onChange={(next) => update({ product: next === DEFAULT_PRODUCT ? undefined : next })}
-          />
+          <ProductTabs value={product} onChange={() => undefined} products={[DEFAULT_PRODUCT]} />
           <SearchBox
             key={search}
             label="User Search"
