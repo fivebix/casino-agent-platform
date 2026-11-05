@@ -5,5 +5,6 @@ Provisions for the casino **agent network** feature (real-person agents who run 
 - `docs/plan.md`: the plan and architecture
 - `docs/questions-and-answers.md`: every question asked and every answer given, for stakeholder sign-off
 - `contract/`: the API contract between the sweepstakes backend and the agent platform
+- `client/`: the agent panel (Next.js); deployed on AWS Amplify with `amplify.yml` (app root `client`)
 
-The agent-platform backend itself is not built yet (ownership and access are open). This repo holds the contract and the tooling to build against it.
+The agent network's API lives in `sweepstakes-backend` (`src/agent/`); this repo holds the panel, the contract and the docs.
