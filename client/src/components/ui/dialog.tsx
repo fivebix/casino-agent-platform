@@ -34,6 +34,7 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      data-dialog=""
       className={cn(
         'fixed left-1/2 top-10 z-50 flex max-h-[calc(100vh-5rem)] w-[calc(100%-2rem)] -translate-x-1/2 flex-col overflow-hidden rounded-xs border border-border bg-panel shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         className,

@@ -44,7 +44,7 @@ const ModalShell = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={SIZES[size]} aria-describedby={undefined}>
+      <DialogContent className={SIZES[size]} data-size={size} aria-describedby={undefined}>
         <header className="relative flex min-h-20 shrink-0 items-center justify-center gap-4 border-b border-border px-14 py-4">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-lime text-lime">
             <Icon icon={icon} className="h-5 w-5" />
