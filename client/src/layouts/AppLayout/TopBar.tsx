@@ -10,8 +10,6 @@ import { EXTERNAL_LINKS } from '@/lib/constants';
 import { formatAmount } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useGetBalanceQuery } from '@/services/agentApi';
-import LanguageMenu from './LanguageMenu';
-import OddsFormatMenu from './OddsFormatMenu';
 
 type ContactIconProps = { href: string; label: string; icon: string; className: string };
 
@@ -31,7 +29,10 @@ const ContactIcon = ({ href, label, icon, className }: ContactIconProps) => (
   </a>
 );
 
-/** Design 01 top bar: user · wallet (opens Balance) · odds format · language · contacts · clock · Logout. */
+/**
+ * Design 01 top bar: user · wallet (opens Balance) · contacts · clock · Logout. The odds format and language menus
+ * (OddsFormatMenu, LanguageMenu) are kept but not shown until they work.
+ */
 const TopBar = () => {
   const { agent } = useAuth();
   const { open } = useModal();
@@ -66,9 +67,6 @@ const TopBar = () => {
           formatAmount(balance?.creditLeft)
         )}
       </button>
-
-      <OddsFormatMenu />
-      <LanguageMenu />
 
       <div className="flex items-center gap-3 px-[14px]">
         <ContactIcon
