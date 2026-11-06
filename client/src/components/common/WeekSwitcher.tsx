@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { formatDayMonth } from '@/lib/format';
+import { formatDayMonth, formatShortDateTime } from '@/lib/format';
 import { getLocalWeekRange } from '@/lib/week';
 import { cn } from '@/lib/utils';
 import type { Week, WeekStart } from '@/types/agent';
@@ -20,6 +20,8 @@ const WeekSwitcher = ({ week, onChange, disabled, className }: Props) => {
   const fallback = week ? null : getLocalWeekRange();
   const start = week?.start ?? fallback?.start;
   const end = week?.end ?? fallback?.end;
+  // Test-server close cycles (keyed from 1900) last minutes, not a week: show the times too.
+  const fmt = week && week.weekStart < '2000-01-01' ? formatShortDateTime : formatDayMonth;
 
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
@@ -32,9 +34,9 @@ const WeekSwitcher = ({ week, onChange, disabled, className }: Props) => {
         Previous
       </Button>
       <span className="whitespace-nowrap px-0.5 text-sm text-foreground">
-        {formatDayMonth(start)}
+        {fmt(start)}
         <span className="mx-2 text-muted">-</span>
-        {formatDayMonth(end)}
+        {fmt(end)}
       </span>
       <Button
         variant="secondary"

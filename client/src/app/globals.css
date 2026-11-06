@@ -142,3 +142,30 @@
     background: transparent;
   }
 }
+
+/*
+ * Phones only, like 50bet. After login a phone shows the 1280px desktop page zoomed out to fit, so what is typed into
+ * or tapped grows instead: dialogs and the Create form by 1.7 (14px text reads like 24px), widths capped to stay
+ * on the page (sm ≈ 70%, md ≈ 75% of it); the large User Edit dialog by 1.3, because its 900px layout must fit whole
+ * (≈ 90% of the page). Lists and tables stay as on desktop. `data-device` is set by
+ * PhoneMarker, which only the panel mounts, so the login screens are untouched.
+ */
+html[data-device='phone'] [data-dialog] {
+  zoom: 1.7;
+  max-width: 560px;
+  max-height: calc((100vh - 5rem) / 1.7);
+}
+html[data-device='phone'] [data-dialog][data-size='sm'] {
+  max-width: 520px;
+}
+html[data-device='phone'] [data-dialog][data-size='lg'] {
+  zoom: 1.3;
+  max-width: 900px;
+  max-height: calc((100vh - 5rem) / 1.3);
+}
+html[data-device='phone'] [data-phone-form] {
+  zoom: 1.7;
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+}
