@@ -99,6 +99,7 @@ const UsersTable = ({
         totals,
         meId: agent?.id,
         isAdminAgent: agent?.role === 'admin_agent',
+        isClosedWeek: week ? !week.isCurrent : false,
         onUser: (r) =>
           open(MODAL_TYPES.USER_EDIT, { kind: toKindPath(r.kind), id: r.id, username: r.username }),
         onCredit: (r) =>
@@ -122,7 +123,7 @@ const UsersTable = ({
             amount: r.backupCredit,
           }),
       }),
-    [view, totals, open, agent?.id, agent?.role, week?.weekStart, week?.isCurrent],
+    [view, totals, open, agent?.id, agent?.role, week],
   );
 
   const renderSubComponent = ({ row }: { row: Row<UserTreeRow> }) => {

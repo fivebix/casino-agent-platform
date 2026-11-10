@@ -51,6 +51,17 @@ export const createUserSchema = yup.object({
   language: yup.string().required(),
   /** Admin agent only: the agent to create under ('' = the caller). */
   parentId: yup.string().optional(),
+  /** Agents only: ISO country and IANA zone (the week closes at Tuesday 11:00 there). */
+  country: yup.string().when('type', {
+    is: 'agent',
+    then: (s) => s.required('Choose a country'),
+    otherwise: (s) => s.optional(),
+  }),
+  timezone: yup.string().when('type', {
+    is: 'agent',
+    then: (s) => s.required('Choose a time zone'),
+    otherwise: (s) => s.optional(),
+  }),
   sportShare: share(),
   casinoShare: share(),
   chanceShare: share(),

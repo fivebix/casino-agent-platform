@@ -55,6 +55,7 @@ const buildColumns = ({ odds, openDetails }: Deps) => [
     id: 'id',
     header: 'Bet ID',
     cell: betCell((b) => <BetIdLink id={b.id} onClick={() => openDetails(b)} />),
+    meta: { info: 'The bet’s ID. Click it to open the ticket.' },
   }),
   col.display({
     id: 'fullShare',
@@ -74,12 +75,23 @@ const buildColumns = ({ odds, openDetails }: Deps) => [
     cell: betCell((b) => (b.sharePct === null ? null : formatAmount(b.sharePct))),
     meta: meta({ headerClassName: 'w-[34px]' }),
   }),
-  col.display({ id: 'username', header: 'Username', cell: betCell((b) => b.username) }),
-  col.display({ id: 'name', header: 'Name', cell: betCell((b) => b.name) }),
+  col.display({
+    id: 'username',
+    header: 'Username',
+    cell: betCell((b) => b.username),
+    meta: { info: 'The player who placed the bet.' },
+  }),
+  col.display({
+    id: 'name',
+    header: 'Name',
+    cell: betCell((b) => b.name),
+    meta: { info: 'The player’s name.' },
+  }),
   col.display({
     id: 'placedAt',
     header: 'Bet Date',
     cell: betCell((b) => <span className="tabular-nums">{formatTimeWithSeconds(b.placedAt)}</span>),
+    meta: { info: 'When the bet was placed, in your time zone.' },
   }),
   col.display({
     id: 'information',
@@ -92,7 +104,7 @@ const buildColumns = ({ odds, openDetails }: Deps) => [
       ) : r.bet.legs[0] ? (
         <LegInfo leg={r.bet.legs[0]} />
       ) : null,
-    meta: meta({ cellClassName: 'min-w-[300px] py-1' }),
+    meta: meta({ info: 'The event, the pick and its odds.', cellClassName: 'min-w-[300px] py-1' }),
   }),
   col.display({
     id: 'odds',
@@ -100,31 +112,37 @@ const buildColumns = ({ odds, openDetails }: Deps) => [
     cell: ({ row: { original: r } }) => (
       <span className="tabular-nums">{odds(r.kind === 'leg' ? r.leg.odds : r.bet.odds)}</span>
     ),
+    meta: { info: 'Your share percentage on this bet.' },
   }),
   col.display({
     id: 'odds5m',
     header: '5 M',
     cell: betCell((b) => <MovedOdds base={b.odds} value={b.odds5m} format={odds} />),
+    meta: { info: 'Odds of the same pick 5 minutes after the bet.' },
   }),
   col.display({
     id: 'odds10m',
     header: '10 M',
     cell: betCell((b) => <MovedOdds base={b.odds} value={b.odds10m} format={odds} />),
+    meta: { info: 'Odds of the same pick 10 minutes after the bet.' },
   }),
   col.display({
     id: 'oddsNow',
     header: 'Now',
     cell: betCell((b) => <MovedOdds base={b.odds} value={b.oddsNow} format={odds} />),
+    meta: { info: 'Odds of the same pick right now.' },
   }),
   col.display({
     id: 'stake',
     header: 'Amount',
     cell: betCell((b) => <span className="tabular-nums">{formatAmount(b.stake)}</span>),
+    meta: { info: 'Amount staked.' },
   }),
   col.display({
     id: 'toWin',
     header: 'Wining',
     cell: betCell((b) => <span className="tabular-nums">{formatAmount(b.toWin)}</span>),
+    meta: { info: 'What the bet pays if it wins.' },
   }),
 ];
 

@@ -95,10 +95,13 @@ export const agentApi = baseApiService.injectEndpoints({
       transformResponse: unwrap<UsersList>,
       providesTags: ['Users'],
     }),
-    getPlayerBets: build.query<PlayerBets, { playerId: string; weekStart?: WeekStart }>({
-      query: ({ playerId, weekStart }) => ({
+    getPlayerBets: build.query<
+      PlayerBets,
+      { playerId: string; weekStart?: WeekStart; page?: number; limit?: number }
+    >({
+      query: ({ playerId, weekStart, page, limit }) => ({
         url: `/agent/users/players/${playerId}/bets`,
-        params: cleanParams({ weekStart }),
+        params: cleanParams({ weekStart, page, limit }),
       }),
       transformResponse: unwrap<PlayerBets>,
       providesTags: (_r, _e, { playerId }) => [{ type: 'PlayerBets', id: playerId }],
@@ -228,11 +231,14 @@ export const agentApi = baseApiService.injectEndpoints({
       transformResponse: unwrap<Corrections>,
       providesTags: (_r, _e, ref) => [{ type: 'Corrections', id: `${ref.kind}:${ref.id}` }],
     }),
-    addCorrection: build.mutation<void, UserRef & { amount: number; comment?: string }>({
-      query: ({ kind, id, amount, comment }) => ({
+    addCorrection: build.mutation<
+      void,
+      UserRef & { amount: number; comment?: string; weekStart?: WeekStart }
+    >({
+      query: ({ kind, id, amount, comment, weekStart }) => ({
         url: `/agent/${kind}/${id}/corrections`,
         method: 'POST',
-        body: { amount, comment },
+        body: { amount, comment, weekStart },
       }),
       invalidatesTags: (_r, _e, ref) => [
         { type: 'Corrections', id: `${ref.kind}:${ref.id}` },

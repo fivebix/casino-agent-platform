@@ -47,81 +47,90 @@ const buildColumns = ({ odds, openDetails, totals }: Deps) => [
     header: 'Bet ID',
     cell: (c) => <BetIdLink id={c.getValue()} onClick={() => openDetails(c.row.original)} />,
     footer: () => 'TOTAL',
-    meta: meta({ footerColSpan: 3 }),
+    meta: meta({ info: 'The bet’s ID. Click it to open the ticket.', footerColSpan: 3 }),
   }),
   col.accessor('playerPublicId', {
     header: 'User ID',
     cell: (c) => <span className="tabular-nums">{c.getValue()}</span>,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'The player’s short ID number.', footerColSpan: 0 }),
   }),
-  col.accessor('username', { header: 'Username', meta: meta({ footerColSpan: 0 }) }),
+  col.accessor('username', {
+    header: 'Username',
+    meta: meta({ info: 'The player who placed the bet.', footerColSpan: 0 }),
+  }),
   col.accessor('placedAt', {
     header: 'Time',
     cell: (c) => <TimeDayCell value={c.getValue()} />,
     footer: () => `COUNT BETS:${totals.count}`,
-    meta: meta({ footerColSpan: 8 }),
+    meta: meta({ info: 'When the bet was placed, in your time zone.', footerColSpan: 8 }),
   }),
   col.display({
     id: 'sport',
     header: 'Sport',
     cell: ({ row: { original: b } }) =>
       b.wagerType === 'parlay' ? `Parlay ${b.legs.length}` : (b.legs[0]?.sport ?? '-'),
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'The sport, or the number of legs of a parlay.', footerColSpan: 0 }),
   }),
   col.display({
     id: 'description',
     header: 'Description',
     cell: ({ row: { original: b } }) =>
       b.wagerType === 'single' && b.legs[0] ? <LegInfo leg={b.legs[0]} /> : null,
-    meta: meta({ footerColSpan: 0, cellClassName: 'min-w-[260px] py-1' }),
+    meta: meta({
+      info: 'The event and the pick.',
+      footerColSpan: 0,
+      cellClassName: 'min-w-[260px] py-1',
+    }),
   }),
   col.display({
     id: 'ticket',
     header: 'Ticket',
     cell: (c) => <TicketButton onClick={() => openDetails(c.row.original)} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Opens the full ticket.', footerColSpan: 0 }),
   }),
   col.accessor('odds', {
     header: 'Odds',
     cell: (c) => <span className="tabular-nums">{odds(c.getValue())}</span>,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Odds when the bet was placed, in your odds format.', footerColSpan: 0 }),
   }),
   col.accessor('odds5m', {
     header: '5 M',
     cell: (c) => <MovedOdds base={c.row.original.odds} value={c.getValue()} format={odds} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Odds of the same pick 5 minutes after the bet.', footerColSpan: 0 }),
   }),
   col.accessor('odds10m', {
     header: '10 M',
     cell: (c) => <MovedOdds base={c.row.original.odds} value={c.getValue()} format={odds} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Odds of the same pick 10 minutes after the bet.', footerColSpan: 0 }),
   }),
   col.accessor('oddsNow', {
     header: 'Now',
     cell: (c) => <MovedOdds base={c.row.original.odds} value={c.getValue()} format={odds} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Odds of the same pick right now.', footerColSpan: 0 }),
   }),
   col.accessor('stake', {
     header: 'Amount',
     cell: (c) => <span className="tabular-nums">{formatAmount(c.getValue())}</span>,
     footer: () => formatAmount(totals.stake),
+    meta: { info: 'Amount staked.' },
   }),
   col.display({
     id: 'win',
     header: 'Win',
     cell: (c) => <span className="tabular-nums">{formatAmount(betWin(c.row.original))}</span>,
     footer: () => formatAmount(totals.win),
+    meta: { info: 'Settled profit or loss; for an open bet, the profit it would pay.' },
   }),
   col.display({
     id: 'result',
     header: 'Result',
     cell: ({ row: { original: b } }) => (b.wagerType === 'single' ? (b.legs[0]?.score ?? '') : ''),
-    meta: meta({ footerColSpan: 2 }),
+    meta: meta({ info: 'Final score of the event.', footerColSpan: 2 }),
   }),
   col.accessor('status', {
     header: 'Status',
     cell: (c) => <BetStatusText status={c.getValue()} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'Open, won, lost or void.', footerColSpan: 0 }),
   }),
 ];
 

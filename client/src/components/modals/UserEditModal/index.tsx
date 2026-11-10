@@ -117,7 +117,14 @@ const UserEditModal = ({ isOpen, onClose, kind, id, username }: UserEditModalPro
       bodyClassName="pt-0"
     >
       <div className="sticky top-0 z-10 -mx-7 bg-panel px-7 pb-5 pt-5">
-        <TabsBar items={USER_EDIT_TABS} value={tab} onChange={setTab} />
+        <TabsBar
+          // A player's Shares tab held only the (commented-out) loss discount, so players don't get it.
+          items={
+            kind === 'players' ? USER_EDIT_TABS.filter((t) => t.value !== 'shares') : USER_EDIT_TABS
+          }
+          value={tab}
+          onChange={setTab}
+        />
       </div>
       {isLoading ? (
         <StateMessage variant="loading" />

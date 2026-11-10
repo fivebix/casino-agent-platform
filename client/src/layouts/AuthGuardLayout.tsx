@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Spinner from '@/components/common/Spinner';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/constants';
+import { setDisplayTimeZone } from '@/lib/timezone';
 import { useGetMeQuery } from '@/services/agentApi';
 
 type Props = {
@@ -21,7 +22,9 @@ type Props = {
 const AuthGuardLayout = ({ children }: Props) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, mustChangePassword } = useAuth();
+  const { agent, isAuthenticated, mustChangePassword } = useAuth();
+  // Every date in the panel is shown in the agent's own time zone; set before the children render.
+  setDisplayTimeZone(agent?.timezone);
 
   useGetMeQuery(undefined, { skip: !isAuthenticated, refetchOnMountOrArgChange: true });
 

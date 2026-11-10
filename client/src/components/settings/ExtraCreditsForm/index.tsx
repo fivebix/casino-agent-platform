@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import InfoTip from '@/components/common/InfoTip';
 import StateMessage from '@/components/common/StateMessage';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -80,11 +81,27 @@ const ExtraCreditsForm = () => {
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="text-[11px] font-semibold uppercase text-foreground">
-            <th className={cn(cell, 'h-10 w-[125px] text-left')}>User</th>
+            <th className={cn(cell, 'h-10 w-[125px] text-left')}>
+              <span className="inline-flex items-center gap-1">
+                User
+                <InfoTip
+                  text="All players, or one of your players, to give extra credit to."
+                  placement="bottom"
+                />
+              </span>
+            </th>
             <th className={cn(cell, 'w-[46px]')}>
               <span className="sr-only">Selected</span>
             </th>
-            <th className={cell}>Amount</th>
+            <th className={cell}>
+              <span className="inline-flex items-center justify-center gap-1">
+                Amount
+                <InfoTip
+                  text="Extra credit to add to each selected player, from your own pool."
+                  placement="bottom"
+                />
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>

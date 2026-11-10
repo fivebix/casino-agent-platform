@@ -5,6 +5,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import PageCard from '@/components/common/PageCard';
 import Pagination from '@/components/common/Pagination';
 import SearchBox from '@/components/common/SearchBox';
+import ShortId from '@/components/common/ShortId';
 import StateMessage from '@/components/common/StateMessage';
 import { Select } from '@/components/ui/select';
 import CommonTable, { type CommonColumnMeta } from '@/components/tables';
@@ -31,40 +32,58 @@ type Totals = { stake: number; win: number; net: number; count: number };
 const buildColumns = (totals: Totals) => [
   col.accessor('roundId', {
     header: 'Round ID',
-    cell: (c) => <span className="tabular-nums">{c.getValue()}</span>,
+    cell: (c) => <ShortId value={c.getValue()} />,
     footer: () => `TOTAL · ${totals.count} ${totals.count === 1 ? 'round' : 'rounds'}`,
-    meta: meta({ footerColSpan: 6 }),
+    meta: meta({
+      info: 'The casino round’s ID (last four characters). Use the copy icon to copy the full ID.',
+      footerColSpan: 6,
+    }),
   }),
-  col.accessor('username', { header: 'Username', meta: meta({ footerColSpan: 0 }) }),
+  col.accessor('username', {
+    header: 'Username',
+    meta: meta({ info: 'The player who played the round.', footerColSpan: 0 }),
+  }),
   col.accessor('agentUsername', {
     header: 'Agent',
     cell: (c) => c.getValue() ?? '—',
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'The agent that owns the player.', footerColSpan: 0 }),
   }),
   col.accessor('playedAt', {
     header: 'Date',
     cell: (c) => <TimeDayCell value={c.getValue()} />,
-    meta: meta({ footerColSpan: 0 }),
+    meta: meta({ info: 'When the round was played, in your time zone.', footerColSpan: 0 }),
   }),
-  col.accessor('provider', { header: 'Service', meta: meta({ footerColSpan: 0 }) }),
-  col.accessor('game', { header: 'Game', meta: meta({ footerColSpan: 0 }) }),
+  col.accessor('provider', {
+    header: 'Service',
+    meta: meta({ info: 'The game provider.', footerColSpan: 0 }),
+  }),
+  col.accessor('game', {
+    header: 'Game',
+    meta: meta({ info: 'The game played.', footerColSpan: 0 }),
+  }),
   col.accessor('stake', {
     header: 'Bet',
     cell: (c) => <AmountCell value={c.getValue()} />,
     footer: () => formatAmount(totals.stake),
-    meta: meta({ headerClassName: 'w-[60px]' }),
+    meta: meta({ info: 'Total amount bet in the round.', headerClassName: 'w-[60px]' }),
   }),
   col.accessor('win', {
     header: 'Win',
     cell: (c) => <AmountCell value={c.getValue()} />,
     footer: () => formatAmount(totals.win),
-    meta: meta({ headerClassName: 'w-[60px]' }),
+    meta: meta({
+      info: 'Total paid back to the player in the round.',
+      headerClassName: 'w-[60px]',
+    }),
   }),
   col.accessor('net', {
     header: 'Result',
     cell: (c) => <span className="tabular-nums">{formatSigned(c.getValue())}</span>,
     footer: () => formatSigned(totals.net),
-    meta: meta({ headerClassName: 'w-[94px]' }),
+    meta: meta({
+      info: 'The player’s profit or loss on the round: win minus bet.',
+      headerClassName: 'w-[94px]',
+    }),
   }),
 ];
 

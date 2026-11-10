@@ -42,6 +42,9 @@ export const profileSchema = yup.object({
   isActive: yup.boolean().required(),
   autoWeeklyCredit: amountField(),
   autoWeeklyEnabled: yup.boolean().required(),
+  /** Agents only ('' for a player). */
+  country: yup.string().default(''),
+  timezone: yup.string().default(''),
 });
 
 export const settingsSchema = yup.object({

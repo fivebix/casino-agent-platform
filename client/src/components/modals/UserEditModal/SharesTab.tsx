@@ -1,19 +1,22 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+// import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import FormRow from '@/components/form/FormRow';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+// Loss discount commented out: these were used only by the discount section.
+// import { useAuth } from '@/hooks/useAuth';
+// import { Button } from '@/components/ui/button';
+// import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { formatAmount } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useUpdateUserSharesMutation } from '@/services/agentApi';
 import type { UpdateSharesRequest } from '@/types/agent';
-import { BONUS_SPLIT_OPTIONS, MIN_SPORTS_BETS_PRESETS, SAVE_CACHE_KEY } from './constants';
+import { BONUS_SPLIT_OPTIONS, SAVE_CACHE_KEY } from './constants';
+// import { MIN_SPORTS_BETS_PRESETS } from './constants';
 import { sharesSchema } from './schema';
 import type { SharesFormValues, TabProps } from './type';
 import { cleanNumber } from './utils';
@@ -25,9 +28,10 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <h3 className="mb-2 text-[13px] font-bold text-lime">{children}</h3>
 );
 
+/* Loss discount commented out (the live "Rule:" example under the discount fields).
 type RuleProps = { enabled: boolean; discount: number; minBets: number };
 
-/** The live "Rule:" example under the discount fields; recomputed from the inputs. */
+/** The live "Rule:" example under the discount fields; recomputed from the inputs. * /
 const RuleExample = ({ enabled, discount, minBets }: RuleProps) => {
   const [lost, setLost] = useState(100);
   const above = minBets + 2;
@@ -76,6 +80,7 @@ const RuleExample = ({ enabled, discount, minBets }: RuleProps) => {
     </div>
   );
 };
+*/
 
 /**
  * Design 25. `PATCH /agent/:kind/:id/shares`. Shares and the bonus split are agent-only, so a player sees
@@ -84,7 +89,8 @@ const RuleExample = ({ enabled, discount, minBets }: RuleProps) => {
 const SharesTab = ({ kind, id, detail, formId }: TabProps) => {
   const [updateShares] = useUpdateUserSharesMutation({ fixedCacheKey: SAVE_CACHE_KEY.shares });
   const isAgent = kind === 'agents';
-  const maxDiscount = useAuth().agent?.maxDiscount ?? 100;
+  // Loss discount commented out.
+  // const maxDiscount = useAuth().agent?.maxDiscount ?? 100;
 
   const values = useMemo<SharesFormValues>(
     () => ({
@@ -105,51 +111,49 @@ const SharesTab = ({ kind, id, detail, formId }: TabProps) => {
   const {
     register,
     handleSubmit,
-    setValue,
-    setError,
+    // setValue, setError: used only by the commented-out discount section.
     control,
     formState: { errors, dirtyFields },
   } = useForm<SharesFormValues>({ resolver: yupResolver(sharesSchema), values });
 
-  const [sportShare, casinoShare, chanceShare, enabled, sportsDiscount, minSportsBets] = useWatch({
+  const [sportShare, casinoShare, chanceShare] = useWatch({
     control,
     name: [
       'sportShare',
       'casinoShare',
       'chanceShare',
-      'discountEnabled',
-      'sportsDiscount',
-      'minSportsBets',
+      // Loss discount commented out:
+      // 'discountEnabled',
+      // 'sportsDiscount',
+      // 'minSportsBets',
     ],
   });
 
   // Only changed fields go out: re-sending an untouched value that is now out of bounds would fail the save.
   const onSubmit = async (form: SharesFormValues) => {
     const keys: (keyof SharesFormValues)[] = [
-      'discountEnabled',
-      'sportsDiscount',
-      'casinoDiscount',
-      'chanceDiscount',
-      'minSportsBets',
-      'minCasinoBets',
+      // Loss discount commented out:
+      // 'discountEnabled',
+      // 'sportsDiscount',
+      // 'casinoDiscount',
+      // 'chanceDiscount',
+      // 'minSportsBets',
+      // 'minCasinoBets',
       ...(isAgent ? (['sportShare', 'casinoShare', 'chanceShare', 'bonusSplit'] as const) : []),
     ];
     const changed = keys.filter((key) => dirtyFields[key]);
-    const tooHigh = changed.filter(
-      (key) =>
-        (key === 'sportsDiscount' || key === 'casinoDiscount' || key === 'chanceDiscount') &&
-        form[key] > maxDiscount,
-    );
-    if (tooHigh.length) {
-      tooHigh.forEach((key) =>
-        setError(key, { message: `At most ${formatAmount(maxDiscount)}%` }),
-      );
-      return;
-    }
+    // Loss discount commented out:
+    // const tooHigh = changed.filter(
+    //   (key) =>
+    //     (key === 'sportsDiscount' || key === 'casinoDiscount' || key === 'chanceDiscount') &&
+    //     form[key] > maxDiscount,
+    // );
+    // if (tooHigh.length) {
+    //   tooHigh.forEach((key) => setError(key, { message: `At most ${formatAmount(maxDiscount)}%` }));
+    //   return;
+    // }
     if (!changed.length) return;
-    const body = Object.fromEntries(
-      changed.map((key) => [key, form[key]]),
-    ) as UpdateSharesRequest;
+    const body = Object.fromEntries(changed.map((key) => [key, form[key]])) as UpdateSharesRequest;
     try {
       await updateShares({ kind, id, body }).unwrap();
     } catch {
@@ -163,11 +167,12 @@ const SharesTab = ({ kind, id, detail, formId }: TabProps) => {
     { name: 'chanceShare', label: 'Chance share %', value: chanceShare },
   ] as const;
 
-  const discountRows = [
-    { name: 'sportsDiscount', label: 'Sports discount %' },
-    { name: 'casinoDiscount', label: 'Casino discount %' },
-    { name: 'chanceDiscount', label: 'Chance discount %' },
-  ] as const;
+  // Loss discount commented out:
+  // const discountRows = [
+  //   { name: 'sportsDiscount', label: 'Sports discount %' },
+  //   { name: 'casinoDiscount', label: 'Casino discount %' },
+  //   { name: 'chanceDiscount', label: 'Chance discount %' },
+  // ] as const;
 
   const rowClass = 'gap-x-6 sm:grid-cols-[1fr_auto]';
 
@@ -221,6 +226,7 @@ const SharesTab = ({ kind, id, detail, formId }: TabProps) => {
         </section>
       )}
 
+      {/* Loss discount commented out.
       <section>
         <SectionTitle>Loss discount (bonus of lose)</SectionTitle>
         <p className="-mt-1 mb-2 text-[11px] text-muted">
@@ -312,6 +318,7 @@ const SharesTab = ({ kind, id, detail, formId }: TabProps) => {
           minBets={cleanNumber(minSportsBets)}
         />
       </section>
+      */}
     </form>
   );
 };

@@ -30,32 +30,48 @@ const buildColumns = (openDetails: (bet: ChanceBet) => void) => [
   col.accessor('id', {
     header: 'ID',
     cell: (c) => <BetIdLink id={c.getValue()} onClick={() => openDetails(c.row.original)} />,
+    meta: { info: 'The bet’s ID.' },
   }),
-  col.accessor('username', { header: 'Username' }),
+  col.accessor('username', {
+    header: 'Username',
+    meta: { info: 'The player who placed the bet.' },
+  }),
   col.accessor('placedAt', {
     header: 'Bet Date',
     cell: (c) => <TimeDayCell value={c.getValue()} />,
+    meta: { info: 'When the bet was placed, in your time zone.' },
   }),
-  col.accessor('ticketId', { header: 'Ticket ID' }),
-  col.accessor('lotteryNumber', { header: 'Lottery Number' }),
+  col.accessor('ticketId', { header: 'Ticket ID', meta: { info: 'The lottery ticket ID.' } }),
+  col.accessor('lotteryNumber', {
+    header: 'Lottery Number',
+    meta: { info: 'The numbers played.' },
+  }),
   col.accessor('gameDate', {
     header: 'Game Date',
     cell: (c) => <TimeDayCell value={c.getValue()} />,
+    meta: { info: 'When the draw takes place, in your time zone.' },
   }),
-  col.accessor('type', { header: 'Type' }),
+  col.accessor('type', { header: 'Type', meta: { info: 'The kind of lottery bet.' } }),
   col.accessor('stake', {
     header: 'Amount',
     cell: (c) => <span className="tabular-nums">{formatAmount(c.getValue())}</span>,
+    meta: { info: 'Amount staked.' },
   }),
   col.accessor('win', {
     header: 'Win',
     cell: (c) => <span className="tabular-nums">{formatAmount(c.getValue())}</span>,
+    meta: { info: 'Amount won.' },
   }),
   col.accessor('status', {
     header: 'Status',
     cell: (c) => <BetStatusText status={c.getValue()} />,
+    meta: { info: 'Open, won or lost.' },
   }),
-  col.accessor('form', { header: 'Form', cell: (c) => c.getValue() ?? '-' }),
+  col.accessor('form', {
+    header: 'Form',
+    cell: (c) => c.getValue() ?? '-',
+    meta: { info: 'How the numbers were played.' },
+  }),
 ];
 
 /** Design 05. `GET /agent/bets?product=chance` — always empty for now. */
