@@ -1,6 +1,7 @@
 import PageCard from '@/components/common/PageCard';
 import { KeyValuePanel, type KeyValueRow } from '@/components/ui/keyValuePanel';
-import { formatAmount, formatPercent } from '@/lib/format';
+import { formatAmount } from '@/lib/format';
+// import { formatPercent } from '@/lib/format'; // used only by the commented-out discount lines
 import type { AgentSummary } from '@/types/agent';
 
 type Props = {
@@ -17,16 +18,18 @@ const UsersSummary = ({ summary: s, isLoading }: Props) => {
     { label: 'Sports Commission', value: formatAmount(s?.sportsCommission) },
     { label: 'Casino Commission', value: formatAmount(s?.casinoCommission) },
     { label: 'Chance Commission', value: formatAmount(s?.chanceCommission) },
-    { label: 'Sports Discount', value: formatPercent(s?.sportsDiscount) },
-    { label: 'Casino Discount', value: formatPercent(s?.casinoDiscount) },
-    { label: 'Chance Discount', value: formatPercent(s?.chanceDiscount) },
+    // Loss discount commented out:
+    // { label: 'Sports Discount', value: formatPercent(s?.sportsDiscount) },
+    // { label: 'Casino Discount', value: formatPercent(s?.casinoDiscount) },
+    // { label: 'Chance Discount', value: formatPercent(s?.chanceDiscount) },
     { label: 'Backup Credit', value: s ? (s.backupCredit ? 'Yes' : 'No') : '—' },
     { label: 'Backup Credit Amount', value: formatAmount(s?.backupCreditAmount) },
     { label: 'Used Backup Credit', value: formatAmount(s?.usedBackupCredit) },
   ];
   const right: KeyValueRow[] = [
     { label: 'Turnover', value: formatAmount(s?.turnover) },
-    { label: 'Total Discount', value: formatAmount(s?.totalDiscount) },
+    // Loss discount commented out:
+    // { label: 'Total Discount', value: formatAmount(s?.totalDiscount) },
     { label: 'Agent Profits', value: formatAmount(s?.agentProfits) },
     { label: 'Platform profits', value: formatAmount(s?.platformProfits) },
     { label: 'Platform Debt', value: formatAmount(s?.platformDebt) },

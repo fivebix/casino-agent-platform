@@ -1,4 +1,5 @@
 import { format, isValid, parseISO } from 'date-fns';
+import { toZonedWall } from '@/lib/timezone';
 
 /** Money / figures as the designs show them: no thousands separator, at most 2 decimals (5000, -5, 12.5). */
 export const formatAmount = (value: number | null | undefined): string => {
@@ -16,9 +17,10 @@ export const formatSigned = (value: number | null | undefined): string => {
 export const formatPercent = (value: number | null | undefined): string =>
   value === null || value === undefined ? '—' : `${formatAmount(value)}%`;
 
+/** The instant as the signed-in agent's wall clock (its time zone), ready for `format`. */
 const toDate = (value: string | Date): Date | null => {
   const d = typeof value === 'string' ? parseISO(value) : value;
-  return isValid(d) ? d : null;
+  return isValid(d) ? toZonedWall(d) : null;
 };
 
 /** `21.09 19:30` — bet tables. */

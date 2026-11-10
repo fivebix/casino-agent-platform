@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { LANGUAGES, ROUTES } from '@/lib/constants';
+import { browserTimeZone, getCountryOptions, timeZoneOptions } from '@/lib/timezone';
 import {
   useCreateAgentMutation,
   useCreatePlayerMutation,
@@ -60,6 +61,8 @@ const CreateUserForm = () => {
       autoWeeklyCredit: 0,
       language: 'en',
       parentId: '',
+      country: '',
+      timezone: browserTimeZone(),
     },
   });
 
@@ -86,8 +89,7 @@ const CreateUserForm = () => {
     if (parentId && !parentOptions.some((o) => o.value === parentId)) setValue('parentId', '');
   }, [parentId, parentOptions, setValue]);
 
-  const newAgentLabel =
-    me?.role === 'agent' || (isAdminAgent && parentId) ? 'Sub-agent' : 'Agent';
+  const newAgentLabel = me?.role === 'agent' || (isAdminAgent && parentId) ? 'Sub-agent' : 'Agent';
   const typeOptions = [
     { value: 'player', label: 'Player' },
     ...(me?.role === 'sub_agent' ? [] : [{ value: 'agent', label: newAgentLabel }]),
@@ -111,6 +113,8 @@ const CreateUserForm = () => {
           sportShare: form.sportShare ?? 0,
           casinoShare: form.casinoShare ?? 0,
           chanceShare: form.chanceShare ?? 0,
+          country: form.country,
+          timezone: form.timezone,
           ...(under ? { parentId: under } : {}),
         }).unwrap();
       } else {
@@ -214,6 +218,42 @@ const CreateUserForm = () => {
               />
             </FormRow>
           ))}
+        {isAgent && (
+          <>
+            <FormRow
+              label="Country"
+              required
+              htmlFor="create-country"
+              error={errors.country?.message}
+            >
+              <Select
+                id="create-country"
+                placeholder="Choose a country"
+                options={getCountryOptions()}
+                wrapperClassName="w-[280px]"
+                {...register('country')}
+              />
+            </FormRow>
+            <FormRow
+              label="Time zone"
+              required
+              htmlFor="create-timezone"
+              error={errors.timezone?.message}
+            >
+              <div className="flex flex-col gap-1">
+                <Select
+                  id="create-timezone"
+                  options={timeZoneOptions()}
+                  wrapperClassName="w-[280px]"
+                  {...register('timezone')}
+                />
+                <span className="text-xs text-muted">
+                  The week closes at Tuesday 11:00 in this time zone; the panel shows times in it.
+                </span>
+              </div>
+            </FormRow>
+          </>
+        )}
         <FormRow label="Language" htmlFor="create-language">
           <Select id="create-language" options={LANGUAGE_OPTIONS} {...register('language')} />
         </FormRow>

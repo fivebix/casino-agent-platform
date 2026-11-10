@@ -23,6 +23,8 @@ type Options = Handlers & {
   meId?: string;
   /** An admin agent moves credit for anyone in its tree; other agents only for their direct users. */
   isAdminAgent?: boolean;
+  /** A past (closed) week is shown: its figures are read-only. */
+  isClosedWeek?: boolean;
 };
 
 /** A figure that opens a dialog (CREDIT BALANCE, CALC, agents' BACKUP CREDIT). */
@@ -59,18 +61,18 @@ const INFO = {
   status:
     'Active or inactive. Switching an agent off blocks it and everyone below it; switching a player off stops them logging in to the casino.',
   creditBalance:
-    'Player: the wallet balance right now. Agent: the credit left in its pool to give out. Click to set, add or take back credit.',
-  calc: 'This week’s result plus corrections. Negative means the user owes; positive means they are owed. Click to see or add corrections.',
+    'Player: the wallet balance (at the close, for a past week). Agent: the credit left in its pool to give out. Click to set, add or take back credit (current week only).',
+  calc: 'This week’s result plus corrections. Negative means the user owes; positive means they are owed. Click to see corrections, or add one while the week is open.',
   backupCredit:
     'Extra credit set aside for an agent from your own pool, used once its own pool runs out.',
   riskMoney: 'Money in bets that are still open this week.',
   openBets: 'Number of bets this week that are not settled yet.',
   closedBets: 'Number of bets settled this week.',
   turnover: 'Total amount staked this week.',
-  total: 'The full settled result of the week, before any discount or share split.',
+  total: 'The full settled result of the week, before the share split.',
   bonus: 'Loss discount given this week.',
-  nette: 'Total minus the loss discount: the amount that is split by shares.',
-  sharePct: 'This user’s share percentage.',
+  nette: 'The amount that is split by shares.',
+  sharePct: 'This user’s share percentage. For a closed week, the share it was closed with.',
   companyShare:
     'The part of Nette that goes above this user: to the agents above and the operator.',
   agentShare: 'The part of Nette this user keeps, by its share %.',
@@ -91,6 +93,7 @@ export const buildUserColumns = ({
   totals,
   meId,
   isAdminAgent,
+  isClosedWeek,
   onUser,
   onCredit,
   onCalc,
@@ -139,7 +142,9 @@ export const buildUserColumns = ({
     id: 'creditBalance',
     header: () => <HeaderInfo label="Credit Balance" info={INFO.creditBalance} />,
     cell: ({ row }) =>
-      row.original.id !== meId && (isAdminAgent || row.original.parentId === meId) ? (
+      !isClosedWeek &&
+      row.original.id !== meId &&
+      (isAdminAgent || row.original.parentId === meId) ? (
         <ClickableAmount
           value={row.original.creditBalance}
           onClick={() => onCredit(row.original)}
@@ -169,7 +174,7 @@ export const buildUserColumns = ({
     id: 'backupCredit',
     header: () => <HeaderInfo label="Backup Credit" info={INFO.backupCredit} />,
     cell: ({ row }) =>
-      row.original.kind === 'agent' && row.original.parentId === meId ? (
+      !isClosedWeek && row.original.kind === 'agent' && row.original.parentId === meId ? (
         <ClickableAmount
           value={row.original.backupCredit}
           onClick={() => onBackupCredit(row.original)}
@@ -185,7 +190,8 @@ export const buildUserColumns = ({
   figure('closedBets', 'Closed Bets', totals),
   figure('turnover', 'Overturn', totals),
   figure('total', 'Total 100%', totals),
-  figure('bonus', 'Bonus', totals),
+  // Loss discount commented out:
+  // figure('bonus', 'Bonus', totals),
   figure('nette', 'Nette', totals),
   {
     id: 'sharePct',

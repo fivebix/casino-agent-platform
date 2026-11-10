@@ -9,6 +9,7 @@ import StateMessage from '@/components/common/StateMessage';
 import { Input } from '@/components/ui/input';
 import { AmountCell } from '@/components/tables/cellRenderers';
 import { useAddCorrectionMutation, useGetCorrectionsQuery } from '@/services/agentApi';
+import InfoTip from '@/components/common/InfoTip';
 import { formatAmount, formatTimeDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { calculationSchema } from './schema';
@@ -19,10 +20,17 @@ const FORM_ID = 'calculation-form';
 /** White inputs from design 16. */
 const whiteInput = 'h-[30px] bg-white text-[#18181b] placeholder:text-[#71717a]';
 
+const HISTORY_COLUMNS = [
+  { label: 'Date', info: 'When the correction was added, in your time zone.' },
+  { label: 'Sum', info: 'The amount added to (or, if negative, taken from) the calc.' },
+  { label: 'Comment', info: 'The note written with the correction.' },
+  { label: 'By', info: 'Who added the correction.' },
+];
+
 /**
- * Design 16, opened from CALC. `GET /agent/:kind/:id/corrections` (current sum + history),
- * Save → `POST /agent/:kind/:id/corrections { amount, comment }`. The backend books corrections on the
- * current week only, so a past week is read-only.
+ * Design 16, opened from CALC. `GET /agent/:kind/:id/corrections` (current sum + history + whether the week is
+ * still open for this user), Save → `POST /agent/:kind/:id/corrections { amount, comment, weekStart }`. Once a week
+ * is over nothing can be added to it: the form is hidden and the backend refuses it (AGENT_WEEK_CLOSED).
  */
 const CalculationModal = ({
   isOpen,
@@ -39,6 +47,8 @@ const CalculationModal = ({
     { refetchOnMountOrArgChange: true },
   );
   const [addCorrection, { isLoading: isSaving }] = useAddCorrectionMutation();
+  // Open only while both the list's week and this user's own week (its time zone) are still running.
+  const canEdit = isCurrentWeek && (data ? data.isCurrent : !isLoading);
   const {
     register,
     handleSubmit,
@@ -53,6 +63,7 @@ const CalculationModal = ({
         id,
         amount: values.amount,
         comment: values.comment || undefined,
+        weekStart,
       }).unwrap();
       reset({ amount: undefined, comment: '' });
       onClose();
@@ -67,7 +78,7 @@ const CalculationModal = ({
       onClose={onClose}
       title={`Calculation ${username}`}
       size="lg"
-      formId={isCurrentWeek ? FORM_ID : undefined}
+      formId={canEdit ? FORM_ID : undefined}
       isSaving={isSaving}
       bodyClassName="px-0 py-5"
     >
@@ -88,7 +99,7 @@ const CalculationModal = ({
         />
       )}
 
-      {isCurrentWeek ? (
+      {canEdit ? (
         <form
           id={FORM_ID}
           onSubmit={handleSubmit(onSubmit)}
@@ -125,7 +136,9 @@ const CalculationModal = ({
         </form>
       ) : (
         <p className="px-6 pt-4 text-center text-sm text-muted">
-          This week is closed. Corrections can only be added to the current week.
+          {isLoading
+            ? 'Loading…'
+            : 'This week is closed. Its figures can no longer be changed; corrections go on the current week only.'}
         </p>
       )}
 
@@ -152,13 +165,16 @@ const CalculationModal = ({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  {['Date', 'Sum', 'Comment', 'By'].map((h) => (
+                  {HISTORY_COLUMNS.map((h) => (
                     <th
-                      key={h}
+                      key={h.label}
                       scope="col"
                       className="h-8 border border-[#36363c] bg-panel-2 px-2 text-[11px] font-bold uppercase"
                     >
-                      {h}
+                      <span className="inline-flex items-center justify-center gap-1">
+                        {h.label}
+                        <InfoTip text={h.info} placement="bottom" />
+                      </span>
                     </th>
                   ))}
                 </tr>

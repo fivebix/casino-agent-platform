@@ -11,6 +11,7 @@ import {
   type OnChangeFn,
   type Row,
 } from '@tanstack/react-table';
+import InfoTip from '@/components/common/InfoTip';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,8 @@ export type CommonColumnMeta = {
    * covered by an earlier span). Default 1.
    */
   footerColSpan?: number;
+  /** Shows an "i" next to the header whose tooltip explains the column. */
+  info?: string;
 };
 
 export type CommonTableProps<TData> = {
@@ -241,9 +244,16 @@ export const CommonTable = <TData,>({
                 const meta = header.column.columnDef.meta as CommonColumnMeta | undefined;
                 return (
                   <th key={header.id} scope="col" className={cn(th, meta?.headerClassName)}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.isPlaceholder ? null : meta?.info ? (
+                      <span className="inline-flex items-center justify-center gap-1">
+                        <span>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </span>
+                        <InfoTip text={meta.info} placement="bottom" />
+                      </span>
+                    ) : (
+                      flexRender(header.column.columnDef.header, header.getContext())
+                    )}
                   </th>
                 );
               })}

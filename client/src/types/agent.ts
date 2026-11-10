@@ -3,6 +3,8 @@
  * Money = number with 2 decimals. Percentages = 0–100. Dates = ISO strings unless noted.
  */
 
+import type { Paginated } from './common';
+
 export type Product = 'sport' | 'casino' | 'chance' | 'overall';
 export type NodeRole = 'admin_agent' | 'agent' | 'sub_agent' | 'player';
 export type UserKind = 'agent' | 'player';
@@ -29,6 +31,10 @@ export type AgentMe = {
   backupCredit: number;
   backupCreditUsed: number;
   language: string;
+  /** ISO 3166-1 alpha-2, null for agents created before countries were asked. */
+  country: string | null;
+  /** IANA zone: the week closes at Tuesday 11:00 here and the panel shows every time in it. */
+  timezone: string;
   oddsFormat: OddsFormat;
   mustChangePassword: boolean;
   sportShare: number;
@@ -59,6 +65,8 @@ export type Week = {
   isCurrent: boolean;
   previous: WeekStart;
   next: WeekStart | null;
+  /** The zone the week was resolved in (the signed-in agent's). */
+  timezone?: string;
 };
 
 export type UserFigures = {
@@ -145,11 +153,11 @@ export type BetRow = {
   status: BetStatus;
 };
 
-export type PlayerBets = {
+/** One page of a player's rounds; `settled` / `open` / `calc` cover the whole week. */
+export type PlayerBets = Paginated<BetRow> & {
   settled: number;
   open: number;
   calc: number;
-  items: BetRow[];
 };
 
 // ---------- 3. Create ----------
@@ -165,6 +173,10 @@ export type CreateAgentRequest = {
   autoWeeklyCredit: number;
   credit?: number;
   language?: string;
+  /** ISO 3166-1 alpha-2. */
+  country?: string;
+  /** IANA zone; the weekly close (Tuesday 11:00) follows it. */
+  timezone?: string;
   /** Admin agent only: create the sub-agent under this agent. */
   parentId?: string;
 };
@@ -197,6 +209,10 @@ export type UserDetail = {
   isActive: boolean;
   createdAt: string;
   leaderName: string | null;
+  /** Agents only. */
+  country?: string | null;
+  /** Agents only. */
+  timezone?: string;
   creditLimit: number;
   autoWeeklyCredit: number;
   autoWeeklyEnabled: boolean;
@@ -227,6 +243,10 @@ export type UpdateProfileRequest = {
   isActive?: boolean;
   autoWeeklyCredit?: number;
   autoWeeklyEnabled?: boolean;
+  /** Agents only. */
+  country?: string;
+  /** Agents only; refused around the Tuesday 11:00 close. */
+  timezone?: string;
 };
 
 export type UpdateSharesRequest = {
@@ -283,7 +303,8 @@ export type Correction = {
   createdByName: string;
 };
 
-export type Corrections = { currentSum: number; items: Correction[] };
+/** `isCurrent`: the asked week is still open for this user, so a correction can be added. */
+export type Corrections = { currentSum: number; isCurrent: boolean; items: Correction[] };
 
 // ---------- 6. Bets and casino ----------
 

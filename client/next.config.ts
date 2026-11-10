@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
 
   // Local tenants are browsed as http://<subdomain>.localhost:3005 (or <subdomain>.lvh.me). The dev
   // server 403s cross-origin /_next/* requests unless those hosts are listed here.
-  allowedDevOrigins: ['*.localhost', 'lvh.me', '*.lvh.me'],
+  allowedDevOrigins: ['*.localhost', '*.agents.localhost', 'lvh.me', '*.lvh.me'],
 
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;

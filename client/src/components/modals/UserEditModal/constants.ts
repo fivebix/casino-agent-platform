@@ -9,7 +9,9 @@ export const USER_EDIT_TABS: TabItem<UserEditTab>[] = [
   { value: 'messages', label: 'Messages' },
   { value: 'modules', label: 'Modules' },
   { value: 'notify', label: 'Notify' },
-  { value: 'shares', label: 'Shares & Discounts' },
+  // Loss discount commented out: the tab now only holds the shares.
+  // { value: 'shares', label: 'Shares & Discounts' },
+  { value: 'shares', label: 'Shares' },
 ];
 
 /** One `<form id>` per tab so the shell's Save button submits the active tab. */
