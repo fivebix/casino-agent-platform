@@ -44,7 +44,8 @@ const LoginForm = () => {
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <h1 className="text-[28px] font-bold tracking-tight text-foreground">Agent login</h1>
       <p className="mt-2.5 text-sm leading-5 text-muted">
-        Sign in with the username and temporary password you received from your agent or master.
+        Sign in with your username and password. Signing in for the first time? Use the temporary
+        password you received from your agent.
       </p>
 
       <div className="mt-8 space-y-6">
@@ -60,11 +61,7 @@ const LoginForm = () => {
             {...register('username')}
           />
         </AuthField>
-        <AuthField
-          label="Temporary password"
-          hint="· issued by your agent / master"
-          htmlFor="password"
-        >
+        <AuthField label="Password" htmlFor="password">
           <Input
             id="password"
             type="password"
