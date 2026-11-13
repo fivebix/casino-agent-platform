@@ -213,7 +213,7 @@ export const agentApi = baseApiService.injectEndpoints({
         method: 'PATCH',
         body: { amount },
       }),
-      invalidatesTags: ['Users', 'Credit'],
+      invalidatesTags: ['Users', 'Credit', 'Balance', 'Me'],
     }),
     clearGroupCredit: build.mutation<void, { id: string }>({
       query: ({ id }) => ({ url: `/agent/agents/${id}/clear-group-credit`, method: 'POST' }),
