@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import InfoTip from '@/components/common/InfoTip';
 import { AmountCell, UserCell } from '@/components/tables/cellRenderers';
 import { formatAmount } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { Totals } from '@/types/agent';
 import UserStatusSwitch from './UserStatusSwitch';
 import type { UserTreeRow, UsersView } from './type';
@@ -32,10 +33,12 @@ const ClickableAmount = ({
   value,
   onClick,
   label,
+  children,
 }: {
   value: number;
   onClick: () => void;
   label: string;
+  children?: ReactNode;
 }) => (
   <button
     type="button"
@@ -43,9 +46,30 @@ const ClickableAmount = ({
     aria-label={label}
     className="rounded-xs px-1.5 py-0.5 hover:bg-white/10 hover:text-lime focus-visible:outline-2 focus-visible:outline-lime"
   >
-    <AmountCell value={value} />
+    {children ?? <AmountCell value={value} />}
   </button>
 );
+
+/**
+ * BACKUP CREDIT as "used / set aside": the set-aside amount in green; the used part grey while none is used,
+ * amber once the agent draws on it and red when all of it is used.
+ */
+const BackupCredit = ({ used, total, bold }: { used?: number; total?: number; bold?: boolean }) => {
+  const given = total ?? 0;
+  const spent = used ?? 0;
+  if (!given && !spent) return <AmountCell value={given} bold={bold} />;
+  const usedTone = !spent ? 'text-muted' : spent >= given ? 'text-negative' : 'text-warning';
+  return (
+    <span
+      title={`${formatAmount(spent)} used of ${formatAmount(given)} set aside`}
+      className={cn('whitespace-nowrap tabular-nums', bold && 'font-bold')}
+    >
+      <span className={usedTone}>{formatAmount(spent)}</span>
+      <span className="text-faint"> / </span>
+      <span className="text-success">{formatAmount(given)}</span>
+    </span>
+  );
+};
 
 /** Header label with an "i" whose tooltip explains the column. */
 const HeaderInfo = ({ label, info }: { label: ReactNode; info: string }) => (
@@ -64,7 +88,7 @@ const INFO = {
     'Player: the wallet balance (at the close, for a past week). Agent: the credit left in its pool to give out. Click to set, add or take back credit (current week only).',
   calc: 'This week’s result plus corrections. Negative means the user owes; positive means they are owed. Click to see corrections, or add one while the week is open.',
   backupCredit:
-    'Extra credit set aside for an agent from your own pool, used once its own pool runs out.',
+    'Used / set aside: extra credit set aside for an agent from your own pool (green), and how much of it the agent has used once its own pool ran out (amber, red when all used).',
   riskMoney: 'Money in bets that are still open this week.',
   openBets: 'Number of bets this week that are not settled yet.',
   closedBets: 'Number of bets settled this week.',
@@ -78,7 +102,10 @@ const INFO = {
   agentShare: 'The part of Nette this user keeps, by its share %.',
 } as const;
 
-type FigureKey = Exclude<keyof Totals, 'creditBalance' | 'calc' | 'backupCredit'>;
+type FigureKey = Exclude<
+  keyof Totals,
+  'creditBalance' | 'calc' | 'backupCredit' | 'backupCreditUsed'
+>;
 
 const figure = (key: FigureKey, header: string, totals?: Totals): ColumnDef<UserTreeRow> => ({
   id: key,
@@ -179,11 +206,15 @@ export const buildUserColumns = ({
           value={row.original.backupCredit}
           onClick={() => onBackupCredit(row.original)}
           label={`Backup credit of ${row.original.username}`}
-        />
+        >
+          <BackupCredit used={row.original.backupCreditUsed} total={row.original.backupCredit} />
+        </ClickableAmount>
       ) : (
-        <AmountCell value={row.original.backupCredit} />
+        <BackupCredit used={row.original.backupCreditUsed} total={row.original.backupCredit} />
       ),
-    footer: () => <AmountCell value={totals?.backupCredit} bold />,
+    footer: () => (
+      <BackupCredit used={totals?.backupCreditUsed} total={totals?.backupCredit} bold />
+    ),
   },
   figure('riskMoney', 'Risk Money', totals),
   figure('openBets', 'Open Bets', totals),
