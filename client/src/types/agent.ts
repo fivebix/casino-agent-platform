@@ -73,6 +73,8 @@ export type UserFigures = {
   creditBalance: number;
   calc: number;
   backupCredit: number;
+  /** How much of `backupCredit` the agent has drawn on (0 for players). */
+  backupCreditUsed: number;
   riskMoney: number;
   openBets: number;
   closedBets: number;
